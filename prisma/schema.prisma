@@ -1,0 +1,83 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  password      String
+  name          String?
+  role          String         @default("USER") // ADMIN or USER
+  skillLevel    String?        // BEGINNER, INTERMEDIATE, or ADVANCED
+  favoriteDishes String?       // JSON string array
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  savedRecipes  SavedRecipe[]
+  shoppingLists ShoppingList[]
+  createdRecipes Recipe[]
+}
+
+model Recipe {
+  id            String         @id @default(cuid())
+  title         String
+  description   String?
+  ingredients   String         // JSON string array
+  instructions  String         // JSON string array
+  prepTime      Int?           // in minutes
+  cookTime      Int?           // in minutes
+  servings      Int?
+  difficulty    String         @default("BEGINNER") // BEGINNER, INTERMEDIATE, or ADVANCED
+  category      String?
+  imageUrl      String?
+  sourceUrl     String?        // Original recipe URL if from web search
+  isCustom      Boolean        @default(false) // User-created recipe
+  createdById   String?
+  createdBy     User?          @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  savedBy       SavedRecipe[]
+  shoppingListItems ShoppingListItem[]
+}
+
+model SavedRecipe {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipeId  String
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  notes     String?
+  savedAt   DateTime @default(now())
+
+  @@unique([userId, recipeId])
+}
+
+model ShoppingList {
+  id        String              @id @default(cuid())
+  name      String
+  userId    String
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     ShoppingListItem[]
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+}
+
+model ShoppingListItem {
+  id              String        @id @default(cuid())
+  shoppingListId  String
+  shoppingList    ShoppingList  @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  recipeId        String?
+  recipe          Recipe?       @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  ingredient      String
+  quantity        String?
+  checked         Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+}
