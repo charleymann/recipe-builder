@@ -245,42 +245,46 @@ The app uses a vibrant, kid-friendly color palette:
 
 ## 🚀 Deployment
 
-### Deploying to Production
+### Quick Deploy to Render
 
-1. **Set up a production database** (PostgreSQL recommended)
-   ```env
-   DATABASE_URL="postgresql://user:password@host:5432/database"
-   ```
+For detailed deployment instructions, see **[DEPLOYMENT.md](./DEPLOYMENT.md)**.
 
-2. **Update the Prisma schema**
-   Change the provider in `prisma/schema.prisma`:
-   ```prisma
-   datasource db {
-     provider = "postgresql"
-     url      = env("DATABASE_URL")
-   }
-   ```
+**Quick Steps:**
 
-3. **Run migrations**
+1. **Switch to PostgreSQL** (required for production):
    ```bash
-   npx prisma migrate deploy
+   bash scripts/switch-to-postgres.sh
+   ```
+
+2. **Configure Render**:
+   - **Build Command**:
+     ```bash
+     npm install && npx prisma generate && npx prisma migrate deploy && npm run build
+     ```
+   - **Start Command**:
+     ```bash
+     npm start
+     ```
+
+3. **Set Environment Variables** in Render:
+   ```
+   DATABASE_URL=<from Render Postgres>
+   NEXTAUTH_URL=https://your-app.onrender.com
+   NEXTAUTH_SECRET=<generate with: openssl rand -base64 32>
+   OPENAI_API_KEY=<your OpenAI key>
+   ADMIN_EMAIL=admin@recipebuilder.com
+   ADMIN_PASSWORD=<change this>
+   ```
+
+4. **After deployment**, seed the database:
+   ```bash
    npm run seed
    ```
 
-4. **Build the application**
-   ```bash
-   npm run build
-   ```
-
-5. **Start the production server**
-   ```bash
-   npm start
-   ```
-
 ### Recommended Platforms
-- [Vercel](https://vercel.com) - Easiest deployment for Next.js
-- [Railway](https://railway.app) - Great for full-stack apps
-- [Render](https://render.com) - Simple and affordable
+- **[Render](https://render.com)** - Simple and affordable (see DEPLOYMENT.md for full guide)
+- **[Vercel](https://vercel.com)** - Easiest for Next.js (requires separate database)
+- **[Railway](https://railway.app)** - Great for full-stack apps
 
 ## 🤝 Contributing
 
