@@ -38,6 +38,12 @@ export default async function RootLayout({
                     >
                       Dashboard
                     </Link>
+                    <Link
+                      href="/settings"
+                      className="text-primary-600 hover:text-primary-800 font-semibold"
+                    >
+                      Settings
+                    </Link>
                     {session.user && (session.user as any).role === 'ADMIN' && (
                       <Link
                         href="/admin"
