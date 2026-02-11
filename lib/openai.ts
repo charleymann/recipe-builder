@@ -38,7 +38,16 @@ Make sure to match recipes appropriate for the ${skillLevel} skill level. Return
       throw new Error('No content returned from OpenAI')
     }
 
-    const recipes = JSON.parse(content)
+    // Strip markdown code blocks if present
+    let cleanedContent = content.trim()
+    if (cleanedContent.startsWith('```')) {
+      // Remove opening code fence (```json or ```)
+      cleanedContent = cleanedContent.replace(/^```(?:json)?\n?/, '')
+      // Remove closing code fence
+      cleanedContent = cleanedContent.replace(/\n?```$/, '')
+    }
+
+    const recipes = JSON.parse(cleanedContent)
     return recipes
   } catch (error) {
     console.error('OpenAI search error:', error)
