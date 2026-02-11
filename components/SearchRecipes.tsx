@@ -3,6 +3,7 @@
 import { useState } from 'react'
 
 interface Recipe {
+  id?: string
   title: string
   description: string
   ingredients: string[]
@@ -14,12 +15,24 @@ interface Recipe {
   category: string
 }
 
-export default function SearchRecipes({ skillLevel }: { skillLevel: string }) {
+interface SearchRecipesProps {
+  skillLevel: string
+  shoppingLists?: Array<{
+    id: string
+    name: string
+  }>
+}
+
+export default function SearchRecipes({ skillLevel, shoppingLists = [] }: SearchRecipesProps) {
   const [query, setQuery] = useState('')
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
+  const [showShoppingListSelector, setShowShoppingListSelector] = useState(false)
+  const [selectedShoppingListId, setSelectedShoppingListId] = useState<string>('')
+  const [newListName, setNewListName] = useState('')
+  const [addingToList, setAddingToList] = useState(false)
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -65,10 +78,107 @@ export default function SearchRecipes({ skillLevel }: { skillLevel: string }) {
         throw new Error('Failed to save recipe')
       }
 
+      const { recipe: savedRecipe } = await response.json()
+
+      // Update the selected recipe with the ID
+      if (selectedRecipe) {
+        setSelectedRecipe({ ...selectedRecipe, id: savedRecipe.id })
+      }
+
       alert('Recipe saved successfully! 🎉')
-      setSelectedRecipe(null)
     } catch (err: any) {
       alert(err.message || 'Failed to save recipe')
+    }
+  }
+
+  const handleAddToShoppingList = async () => {
+    if (!selectedRecipe) return
+
+    // If recipe doesn't have an ID, save it first
+    let recipeId = selectedRecipe.id
+    if (!recipeId) {
+      try {
+        const response = await fetch('/api/recipes/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(selectedRecipe),
+        })
+
+        if (!response.ok) throw new Error('Failed to save recipe')
+
+        const { recipe: savedRecipe } = await response.json()
+        recipeId = savedRecipe.id
+        setSelectedRecipe({ ...selectedRecipe, id: recipeId })
+      } catch (error) {
+        alert('Failed to save recipe before adding to shopping list')
+        return
+      }
+    }
+
+    // If creating a new list
+    if (selectedShoppingListId === 'new' && newListName.trim()) {
+      setAddingToList(true)
+      try {
+        // Create the new list
+        const createResponse = await fetch('/api/shopping-lists', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: newListName }),
+        })
+
+        if (!createResponse.ok) throw new Error('Failed to create list')
+
+        const { shoppingList } = await createResponse.json()
+
+        // Add recipe to the new list
+        const addResponse = await fetch('/api/shopping-lists/add-recipe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recipeId,
+            shoppingListId: shoppingList.id,
+          }),
+        })
+
+        if (!addResponse.ok) throw new Error('Failed to add ingredients')
+
+        const { itemsAdded } = await addResponse.json()
+        alert(`Added ${itemsAdded} ingredients to "${newListName}"!`)
+        setShowShoppingListSelector(false)
+        setNewListName('')
+        setSelectedShoppingListId('')
+      } catch (error) {
+        console.error('Error:', error)
+        alert('Failed to add ingredients to shopping list')
+      } finally {
+        setAddingToList(false)
+      }
+    } else if (selectedShoppingListId && selectedShoppingListId !== 'new') {
+      // Add to existing list
+      setAddingToList(true)
+      try {
+        const response = await fetch('/api/shopping-lists/add-recipe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recipeId,
+            shoppingListId: selectedShoppingListId,
+          }),
+        })
+
+        if (!response.ok) throw new Error('Failed to add ingredients')
+
+        const { itemsAdded } = await response.json()
+        const listName = shoppingLists.find((l) => l.id === selectedShoppingListId)?.name
+        alert(`Added ${itemsAdded} ingredients to "${listName}"!`)
+        setShowShoppingListSelector(false)
+        setSelectedShoppingListId('')
+      } catch (error) {
+        console.error('Error:', error)
+        alert('Failed to add ingredients to shopping list')
+      } finally {
+        setAddingToList(false)
+      }
     }
   }
 
@@ -200,12 +310,98 @@ export default function SearchRecipes({ skillLevel }: { skillLevel: string }) {
               </ol>
             </div>
 
-            <button
-              onClick={() => handleSaveRecipe(selectedRecipe)}
-              className="w-full btn-primary"
-            >
-              Save Recipe to My Collection 💾
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={() => handleSaveRecipe(selectedRecipe)}
+                className="w-full btn-primary"
+              >
+                Save Recipe to My Collection 💾
+              </button>
+
+              {/* Add to Shopping List Section */}
+              {!showShoppingListSelector ? (
+                <button
+                  onClick={() => setShowShoppingListSelector(true)}
+                  className="w-full bg-secondary-600 hover:bg-secondary-700 text-white font-bold py-3 px-4 rounded-lg transition-colors"
+                >
+                  Add Ingredients to Shopping List 🛒
+                </button>
+              ) : (
+                <div className="border-2 border-secondary-200 rounded-lg p-4 bg-secondary-50">
+                  <h3 className="font-bold text-gray-800 mb-3">
+                    Select Shopping List
+                  </h3>
+
+                  {shoppingLists.length > 0 && (
+                    <div className="mb-3">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Existing Lists:
+                      </label>
+                      <select
+                        value={selectedShoppingListId}
+                        onChange={(e) => {
+                          setSelectedShoppingListId(e.target.value)
+                          if (e.target.value !== 'new') {
+                            setNewListName('')
+                          }
+                        }}
+                        className="input-field w-full"
+                      >
+                        <option value="">-- Select a list --</option>
+                        {shoppingLists.map((list) => (
+                          <option key={list.id} value={list.id}>
+                            {list.name}
+                          </option>
+                        ))}
+                        <option value="new">+ Create New List</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {(selectedShoppingListId === 'new' || shoppingLists.length === 0) && (
+                    <div className="mb-3">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        New List Name:
+                      </label>
+                      <input
+                        type="text"
+                        value={newListName}
+                        onChange={(e) => {
+                          setNewListName(e.target.value)
+                          setSelectedShoppingListId('new')
+                        }}
+                        placeholder="e.g., Weekly Groceries"
+                        className="input-field w-full"
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleAddToShoppingList}
+                      disabled={
+                        addingToList ||
+                        (!selectedShoppingListId && !newListName.trim()) ||
+                        (selectedShoppingListId === 'new' && !newListName.trim())
+                      }
+                      className="btn-primary flex-1 disabled:opacity-50"
+                    >
+                      {addingToList ? 'Adding...' : 'Add Ingredients'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowShoppingListSelector(false)
+                        setSelectedShoppingListId('')
+                        setNewListName('')
+                      }}
+                      className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
