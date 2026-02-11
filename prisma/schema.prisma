@@ -10,15 +10,17 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  password      String
-  name          String?
-  role          String         @default("USER") // ADMIN or USER
-  skillLevel    String?        // BEGINNER, INTERMEDIATE, or ADVANCED
-  favoriteDishes String?       // JSON string array
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id                 String         @id @default(cuid())
+  email              String         @unique
+  password           String
+  name               String?
+  role               String         @default("USER") // ADMIN or USER
+  skillLevel         String?        // BEGINNER, INTERMEDIATE, or ADVANCED
+  favoriteDishes     String?        // JSON string array
+  defaultServings    Int?           // Default number of servings for recipe search
+  dietaryRestrictions String?       // JSON object with conditions array and excludedIngredients array
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 
   savedRecipes  SavedRecipe[]
   shoppingLists ShoppingList[]

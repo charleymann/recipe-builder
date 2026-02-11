@@ -9,15 +9,61 @@ interface UserSettingsProps {
     name: string | null
     skillLevel: string | null
     favoriteDishes: string[]
+    defaultServings: number | null
+    dietaryRestrictions: {
+      conditions: string[]
+      excludedIngredients: string[]
+    }
   }
 }
+
+const DIETARY_CONDITIONS = [
+  'Vegetarian',
+  'Vegan',
+  'Gluten-Free',
+  'Dairy-Free',
+  'Nut-Free',
+  'Keto',
+  'Paleo',
+  'Halal',
+  'Kosher',
+]
 
 export default function UserSettings({ user }: UserSettingsProps) {
   const [name, setName] = useState(user.name || '')
   const [skillLevel, setSkillLevel] = useState(user.skillLevel || 'BEGINNER')
+  const [defaultServings, setDefaultServings] = useState(user.defaultServings || 4)
+  const [dietaryConditions, setDietaryConditions] = useState<string[]>(
+    user.dietaryRestrictions.conditions || []
+  )
+  const [excludedIngredients, setExcludedIngredients] = useState<string[]>(
+    user.dietaryRestrictions.excludedIngredients || []
+  )
+  const [newIngredient, setNewIngredient] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
+
+  const toggleDietaryCondition = (condition: string) => {
+    setDietaryConditions((prev) =>
+      prev.includes(condition)
+        ? prev.filter((c) => c !== condition)
+        : [...prev, condition]
+    )
+  }
+
+  const addExcludedIngredient = (e: React.FormEvent) => {
+    e.preventDefault()
+    const ingredient = newIngredient.trim()
+    if (ingredient && !excludedIngredients.includes(ingredient)) {
+      setExcludedIngredients([...excludedIngredients, ingredient])
+      setNewIngredient('')
+    }
+  }
+
+  const removeExcludedIngredient = (ingredient: string) => {
+    setExcludedIngredients(excludedIngredients.filter((i) => i !== ingredient))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,6 +80,11 @@ export default function UserSettings({ user }: UserSettingsProps) {
         body: JSON.stringify({
           name,
           skillLevel,
+          defaultServings,
+          dietaryRestrictions: {
+            conditions: dietaryConditions,
+            excludedIngredients,
+          },
         }),
       })
 
@@ -145,6 +196,90 @@ export default function UserSettings({ user }: UserSettingsProps) {
                 </div>
               </div>
             </label>
+          </div>
+        </div>
+
+        {/* Default Servings */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Default Number of Servings
+          </label>
+          <input
+            type="number"
+            min="1"
+            max="20"
+            value={defaultServings}
+            onChange={(e) => setDefaultServings(parseInt(e.target.value))}
+            className="input w-32"
+          />
+          <p className="mt-1 text-sm text-gray-500">
+            Used when searching for recipes (1-20 servings)
+          </p>
+        </div>
+
+        {/* Dietary Restrictions */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-3">
+            Dietary Restrictions
+          </label>
+
+          {/* Dietary Conditions */}
+          <div className="mb-4">
+            <p className="text-sm text-gray-600 mb-2">Select any that apply:</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {DIETARY_CONDITIONS.map((condition) => (
+                <label
+                  key={condition}
+                  className="flex items-center p-3 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition"
+                >
+                  <input
+                    type="checkbox"
+                    checked={dietaryConditions.includes(condition)}
+                    onChange={() => toggleDietaryCondition(condition)}
+                    className="mr-2 h-4 w-4 text-primary-600"
+                  />
+                  <span className="text-sm">{condition}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Excluded Ingredients */}
+          <div>
+            <p className="text-sm text-gray-600 mb-2">
+              Ingredients to avoid:
+            </p>
+            <form onSubmit={addExcludedIngredient} className="flex gap-2 mb-3">
+              <input
+                type="text"
+                value={newIngredient}
+                onChange={(e) => setNewIngredient(e.target.value)}
+                placeholder="e.g., peanuts, shellfish"
+                className="input flex-1"
+              />
+              <button type="submit" className="btn-primary">
+                Add
+              </button>
+            </form>
+            {excludedIngredients.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {excludedIngredients.map((ingredient) => (
+                  <span
+                    key={ingredient}
+                    className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm flex items-center gap-2"
+                  >
+                    {ingredient}
+                    <button
+                      type="button"
+                      onClick={() => removeExcludedIngredient(ingredient)}
+                      className="hover:text-red-900 font-bold"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

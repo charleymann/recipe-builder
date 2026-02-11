@@ -19,6 +19,8 @@ export async function GET() {
         name: true,
         skillLevel: true,
         favoriteDishes: true,
+        defaultServings: true,
+        dietaryRestrictions: true,
       },
     })
 
@@ -29,6 +31,7 @@ export async function GET() {
     return NextResponse.json({
       ...user,
       favoriteDishes: user.favoriteDishes ? JSON.parse(user.favoriteDishes) : [],
+      dietaryRestrictions: user.dietaryRestrictions ? JSON.parse(user.dietaryRestrictions) : { conditions: [], excludedIngredients: [] },
     })
   } catch (error) {
     console.error('Error fetching user settings:', error)
@@ -45,11 +48,16 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { skillLevel, name, favoriteDishes } = body
+    const { skillLevel, name, favoriteDishes, defaultServings, dietaryRestrictions } = body
 
     // Validate skill level if provided
     if (skillLevel && !['BEGINNER', 'INTERMEDIATE', 'ADVANCED'].includes(skillLevel)) {
       return NextResponse.json({ error: 'Invalid skill level' }, { status: 400 })
+    }
+
+    // Validate defaultServings if provided
+    if (defaultServings !== undefined && (defaultServings < 1 || defaultServings > 20)) {
+      return NextResponse.json({ error: 'Default servings must be between 1 and 20' }, { status: 400 })
     }
 
     const updateData: any = {}
@@ -57,6 +65,12 @@ export async function PUT(request: NextRequest) {
     if (name !== undefined) updateData.name = name
     if (favoriteDishes !== undefined) {
       updateData.favoriteDishes = JSON.stringify(favoriteDishes)
+    }
+    if (defaultServings !== undefined) {
+      updateData.defaultServings = defaultServings
+    }
+    if (dietaryRestrictions !== undefined) {
+      updateData.dietaryRestrictions = JSON.stringify(dietaryRestrictions)
     }
 
     const updatedUser = await prisma.user.update({
@@ -68,6 +82,8 @@ export async function PUT(request: NextRequest) {
         name: true,
         skillLevel: true,
         favoriteDishes: true,
+        defaultServings: true,
+        dietaryRestrictions: true,
       },
     })
 
@@ -76,6 +92,9 @@ export async function PUT(request: NextRequest) {
       favoriteDishes: updatedUser.favoriteDishes
         ? JSON.parse(updatedUser.favoriteDishes)
         : [],
+      dietaryRestrictions: updatedUser.dietaryRestrictions
+        ? JSON.parse(updatedUser.dietaryRestrictions)
+        : { conditions: [], excludedIngredients: [] },
     })
   } catch (error) {
     console.error('Error updating user settings:', error)
