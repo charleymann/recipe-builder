@@ -19,11 +19,19 @@ interface SavedRecipeProps {
       category: string | null
     }
   }>
+  shoppingLists?: Array<{
+    id: string
+    name: string
+  }>
 }
 
-export default function SavedRecipes({ recipes }: SavedRecipeProps) {
+export default function SavedRecipes({ recipes, shoppingLists = [] }: SavedRecipeProps) {
   const [selectedRecipe, setSelectedRecipe] = useState<any>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [showShoppingListSelector, setShowShoppingListSelector] = useState(false)
+  const [selectedShoppingListId, setSelectedShoppingListId] = useState<string>('')
+  const [newListName, setNewListName] = useState('')
+  const [addingToList, setAddingToList] = useState(false)
   const router = useRouter()
 
   const handleDeleteRecipe = async (savedRecipeId: string, e: React.MouseEvent) => {
@@ -50,6 +58,78 @@ export default function SavedRecipes({ recipes }: SavedRecipeProps) {
       alert('Failed to delete recipe. Please try again.')
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  const handleAddToShoppingList = async () => {
+    if (!selectedRecipe) return
+
+    // If creating a new list
+    if (selectedShoppingListId === 'new' && newListName.trim()) {
+      setAddingToList(true)
+      try {
+        // Create the new list
+        const createResponse = await fetch('/api/shopping-lists', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: newListName }),
+        })
+
+        if (!createResponse.ok) throw new Error('Failed to create list')
+
+        const { shoppingList } = await createResponse.json()
+
+        // Add recipe to the new list
+        const addResponse = await fetch('/api/shopping-lists/add-recipe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recipeId: selectedRecipe.id,
+            shoppingListId: shoppingList.id,
+          }),
+        })
+
+        if (!addResponse.ok) throw new Error('Failed to add ingredients')
+
+        const { itemsAdded } = await addResponse.json()
+        alert(`Added ${itemsAdded} ingredients to "${newListName}"!`)
+        setShowShoppingListSelector(false)
+        setNewListName('')
+        setSelectedShoppingListId('')
+        router.refresh()
+      } catch (error) {
+        console.error('Error:', error)
+        alert('Failed to add ingredients to shopping list')
+      } finally {
+        setAddingToList(false)
+      }
+    } else if (selectedShoppingListId && selectedShoppingListId !== 'new') {
+      // Add to existing list
+      setAddingToList(true)
+      try {
+        const response = await fetch('/api/shopping-lists/add-recipe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recipeId: selectedRecipe.id,
+            shoppingListId: selectedShoppingListId,
+          }),
+        })
+
+        if (!response.ok) throw new Error('Failed to add ingredients')
+
+        const { itemsAdded } = await response.json()
+        const listName = shoppingLists.find((l) => l.id === selectedShoppingListId)?.name
+        alert(`Added ${itemsAdded} ingredients to "${listName}"!`)
+        setShowShoppingListSelector(false)
+        setSelectedShoppingListId('')
+        router.refresh()
+      } catch (error) {
+        console.error('Error:', error)
+        alert('Failed to add ingredients to shopping list')
+      } finally {
+        setAddingToList(false)
+      }
     }
   }
 
@@ -175,6 +255,90 @@ export default function SavedRecipes({ recipes }: SavedRecipeProps) {
                 ))}
               </ol>
             </div>
+
+            {/* Add to Shopping List Section */}
+            {!showShoppingListSelector ? (
+              <button
+                onClick={() => setShowShoppingListSelector(true)}
+                className="w-full btn-primary"
+              >
+                Add Ingredients to Shopping List
+              </button>
+            ) : (
+              <div className="border-2 border-primary-200 rounded-lg p-4 bg-primary-50">
+                <h3 className="font-bold text-gray-800 mb-3">
+                  Select Shopping List
+                </h3>
+
+                {shoppingLists.length > 0 && (
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Existing Lists:
+                    </label>
+                    <select
+                      value={selectedShoppingListId}
+                      onChange={(e) => {
+                        setSelectedShoppingListId(e.target.value)
+                        if (e.target.value !== 'new') {
+                          setNewListName('')
+                        }
+                      }}
+                      className="input-field w-full"
+                    >
+                      <option value="">-- Select a list --</option>
+                      {shoppingLists.map((list) => (
+                        <option key={list.id} value={list.id}>
+                          {list.name}
+                        </option>
+                      ))}
+                      <option value="new">+ Create New List</option>
+                    </select>
+                  </div>
+                )}
+
+                {(selectedShoppingListId === 'new' || shoppingLists.length === 0) && (
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      New List Name:
+                    </label>
+                    <input
+                      type="text"
+                      value={newListName}
+                      onChange={(e) => {
+                        setNewListName(e.target.value)
+                        setSelectedShoppingListId('new')
+                      }}
+                      placeholder="e.g., Weekly Groceries"
+                      className="input-field w-full"
+                    />
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleAddToShoppingList}
+                    disabled={
+                      addingToList ||
+                      (!selectedShoppingListId && !newListName.trim()) ||
+                      (selectedShoppingListId === 'new' && !newListName.trim())
+                    }
+                    className="btn-primary flex-1 disabled:opacity-50"
+                  >
+                    {addingToList ? 'Adding...' : 'Add Ingredients'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowShoppingListSelector(false)
+                      setSelectedShoppingListId('')
+                      setNewListName('')
+                    }}
+                    className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

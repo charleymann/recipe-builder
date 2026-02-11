@@ -76,7 +76,10 @@ export default async function DashboardPage() {
 
       <div className="grid lg:grid-cols-2 gap-8 mb-8">
         <div>
-          <SearchRecipes skillLevel={user.skillLevel || 'BEGINNER'} />
+          <SearchRecipes
+            skillLevel={user.skillLevel || 'BEGINNER'}
+            shoppingLists={user.shoppingLists.map(list => ({ id: list.id, name: list.name }))}
+          />
         </div>
         <div>
           <ShoppingLists
@@ -87,7 +90,10 @@ export default async function DashboardPage() {
       </div>
 
       <div>
-        <SavedRecipes recipes={user.savedRecipes} />
+        <SavedRecipes
+          recipes={user.savedRecipes}
+          shoppingLists={user.shoppingLists.map(list => ({ id: list.id, name: list.name }))}
+        />
       </div>
     </div>
   )
