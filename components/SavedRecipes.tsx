@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface SavedRecipeProps {
   recipes: Array<{
@@ -22,6 +23,35 @@ interface SavedRecipeProps {
 
 export default function SavedRecipes({ recipes }: SavedRecipeProps) {
   const [selectedRecipe, setSelectedRecipe] = useState<any>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const router = useRouter()
+
+  const handleDeleteRecipe = async (savedRecipeId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+
+    if (!confirm('Are you sure you want to remove this recipe from your collection?')) {
+      return
+    }
+
+    setDeletingId(savedRecipeId)
+
+    try {
+      const response = await fetch(`/api/recipes/delete?id=${savedRecipeId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete recipe')
+      }
+
+      router.refresh()
+    } catch (error) {
+      console.error('Error deleting recipe:', error)
+      alert('Failed to delete recipe. Please try again.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   return (
     <div className="card">
@@ -36,13 +66,21 @@ export default function SavedRecipes({ recipes }: SavedRecipeProps) {
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {recipes.map(({ recipe }) => (
+          {recipes.map(({ id, recipe }) => (
             <div
               key={recipe.id}
-              className="border-2 border-gray-200 rounded-lg p-4 hover:border-primary-300 hover:shadow-lg transition-all cursor-pointer"
+              className="border-2 border-gray-200 rounded-lg p-4 hover:border-primary-300 hover:shadow-lg transition-all cursor-pointer relative"
               onClick={() => setSelectedRecipe(recipe)}
             >
-              <h3 className="text-lg font-bold text-primary-700 mb-2">
+              <button
+                onClick={(e) => handleDeleteRecipe(id, e)}
+                disabled={deletingId === id}
+                className="absolute top-2 right-2 text-red-500 hover:text-red-700 bg-white rounded-full w-8 h-8 flex items-center justify-center shadow-md hover:shadow-lg transition-all disabled:opacity-50"
+                title="Remove recipe"
+              >
+                {deletingId === id ? '...' : '🗑️'}
+              </button>
+              <h3 className="text-lg font-bold text-primary-700 mb-2 pr-8">
                 {recipe.title}
               </h3>
               <p className="text-gray-600 text-sm mb-3 line-clamp-2">

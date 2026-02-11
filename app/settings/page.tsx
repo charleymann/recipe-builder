@@ -19,6 +19,8 @@ export default async function SettingsPage() {
       name: true,
       skillLevel: true,
       favoriteDishes: true,
+      defaultServings: true,
+      dietaryRestrictions: true,
     },
   })
 
@@ -30,10 +32,14 @@ export default async function SettingsPage() {
     ? JSON.parse(user.favoriteDishes)
     : []
 
+  const dietaryRestrictions = user.dietaryRestrictions
+    ? JSON.parse(user.dietaryRestrictions)
+    : { conditions: [], excludedIngredients: [] }
+
   return (
     <div className="max-w-3xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <div className="mb-8">
-        <h1 className="page-title">⚙️ Settings</h1>
+        <h1 className="page-title">Settings</h1>
         <p className="text-xl text-gray-600">Manage your account preferences</p>
       </div>
 
@@ -41,6 +47,7 @@ export default async function SettingsPage() {
         user={{
           ...user,
           favoriteDishes,
+          dietaryRestrictions,
         }}
       />
     </div>
